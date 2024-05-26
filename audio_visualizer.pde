@@ -24,6 +24,32 @@ float prevScoreLow;
 float prevScoreMid;
 float prevScoreHigh;
 
+int cols, rows;
+int scl;
+
+float[][] terrain;
+float terrainMovement = 0;
+
+int findDivisor(int dim, int minDiv) {
+  int div = minDiv;
+  while (dim % div != 0) {
+    div++;
+  }
+  return div;
+}
+
+String formatTime(int ms) {
+  int t = (int) (ms / 1000);
+  int s = t % 60;
+  int m = (t - s) / 60;
+  
+  return String.format("%02d:%02d", m, s);
+}
+
+String getName(String fileName) {
+  return split(fileName, ".")[0];
+}
+
 void keyPressed() {
   if (key == 'a') {
     if (player.isPlaying()) {
@@ -39,25 +65,24 @@ void keyPressed() {
   }
 }
 
-String formatTime(int ms) {
-  int t = (int) (ms / 1000);
-  int s = t % 60;
-  int m = (t - s) / 60;
-  
-  return String.format("%02d:%02d", m, s);
-}
-
 void setup() {
   fullScreen(P3D);
   
   minim = new Minim(this);
-  player = minim.loadFile("xu.mp3");
+  player = minim.loadFile("Everglow.mp3");
   meta = player.getMetaData();
   beat = new BeatDetect();
   
   bufferSize = player.bufferSize();
   
   fft = new FFT(player.bufferSize(), player.sampleRate());
+
+  scl = findDivisor(width, 30);
+  
+  rows = fft.specSize();
+  cols = width/scl;
+  
+  terrain = new float[cols + 1][rows];
   
   background(0);
 }
@@ -99,10 +124,11 @@ void draw() {
     scoreHigh = prevScoreHigh - 10;
   }
   
+  // Slight background colour changem depending on frequency scores
   color backgroundColor = color(scoreLow/75, scoreMid/75, scoreHigh/75);
-  // Slight background colour change
   background(backgroundColor);
   
+  // Used for movement; faster the stronger the higher frequencies are
   float scoreGlobal = (0.66 * scoreLow) + (0.8 * scoreMid) + (1 * scoreHigh);
   
   float prevBandValue = fft.getBand(0);
@@ -111,12 +137,38 @@ void draw() {
   
   color lineColor = color(100 + scoreLow, 100 + scoreMid, 100 + scoreHigh);
   
+  // Moving 3D Terrain at the bottom
+  terrainMovement += (scoreGlobal / 2500);
+  float zOffset = terrainMovement;
+  for (int z = 0; z < rows; z++) {
+    float xOffset = 0;
+    for (int x = 0; x <= cols; x++) {
+      terrain[x][z] = map(noise(xOffset, zOffset), 0, 1, -50, 50);
+      xOffset += 0.1;
+    }
+    zOffset += 0.1;
+  }
+  
+  noFill();
+  strokeWeight(1);
+  for (int z = 0; z < rows - 1; z++) {
+    stroke(lineColor, 255 - z);
+    beginShape(TRIANGLE_STRIP);
+    for (int x = 0; x <= cols; x++) {
+      vertex(x * scl, height - terrain[x][z], -z * scl);
+      vertex(x * scl, height - terrain[x][z+1], -(z+1) * scl);
+    }
+    endShape();
+  }
+  
   //strokeWeight(1 + (scoreGlobal / 300));
   //stroke(lineColor, 255 - 25);
   //line(0, (height / 2) - 25, -25, 0, (height / 2) + 25, -25);
   //line(0, (height / 2) - 25, -25, 0, (height / 2) - 25, -750);
   //line(0, (height / 2) + 25, -25, 0, (height / 2) + 25, -750);
   //line(0, (height / 2) - 25, -750, 0, (height / 2) + 25, -750);
+  
+  // Top waveform lines
   for (int i = 1; i < fft.specSize(); i++) {
     float bandValue = fft.getBand(i);
     
@@ -124,26 +176,39 @@ void draw() {
     strokeWeight(1 + (scoreGlobal / 300));
     
     // Bottom left
-    line(0, height - (prevBandValue * heightMult), dist * (i - 1), 0, height - (bandValue * heightMult), dist * i);
-    line(0, height - (prevBandValue * heightMult), dist * (i - 1), (bandValue * heightMult), height, dist * i);
-    line((prevBandValue * heightMult), height, dist * (i - 1), (bandValue * heightMult), height, dist * i);
+    line(0, height, dist * (i-1), 0, height, dist * i);
+    
+    //line(0, height - (prevBandValue * heightMult), dist * (i - 1), 0, height - (bandValue * heightMult), dist * i);
+    //line(0, height - (prevBandValue * heightMult), dist * (i - 1), (bandValue * heightMult), height, dist * i);
+    //line((prevBandValue * heightMult), height, dist * (i - 1), (bandValue * heightMult), height, dist * i);
     
     // Bottom right
-    line(width, height - (prevBandValue * heightMult), dist * (i - 1), width, height - (bandValue * heightMult), dist * i);
-    line(width, height - (prevBandValue * heightMult), dist * (i - 1), width - (bandValue * heightMult), height, dist * i);
-    line(width - (prevBandValue * heightMult), height, dist * (i - 1), width - (bandValue * heightMult), height, dist * i);
+    line(width, height, dist * (i-1), width, height, dist * i);
+    
+    //line(width, height - (prevBandValue * heightMult), dist * (i - 1), width, height - (bandValue * heightMult), dist * i);
+    //line(width, height - (prevBandValue * heightMult), dist * (i - 1), width - (bandValue * heightMult), height, dist * i);
+    //line(width - (prevBandValue * heightMult), height, dist * (i - 1), width - (bandValue * heightMult), height, dist * i);
     
     // Top Left
-    line(0, 0, dist * (i - 1), 0, 0, dist * i);
+    line(0, (prevBandValue * heightMult), dist * (i-1), 0, (bandValue * heightMult), dist * i);
+    line((prevBandValue * heightMult), 0, dist * (i-1), (bandValue * heightMult), 0, dist * i);
+    line(0, (prevBandValue * heightMult), dist * (i-1), (bandValue * heightMult), 0, dist * i);
+    
+    //line(0, 0, dist * (i - 1), 0, 0, dist * i);
     
     // Top Right
-    line(width, 0, dist * (i - 1), width, 0, dist * i);
+    line(width, (prevBandValue * heightMult), dist * (i-1), width, (bandValue * heightMult), dist * i);
+    line(width - (prevBandValue * heightMult), 0, dist * (i-1), width - (bandValue * heightMult), 0, dist * i);
+    line(width, (prevBandValue * heightMult), dist * (i-1), width - (bandValue * heightMult), 0, dist * i);
+    
+    //line(width, 0, dist * (i - 1), width, 0, dist * i);
   }
   
+  // Center circle
   fill(255, 150);
   textAlign(CENTER, CENTER);
   textSize(35);
-  text(meta.fileName(), width/2, height/2 - 25, 0);
+  text(getName(meta.fileName()), width/2, height/2 - 25, 0);
   fill(255, 150 - 32);
   text(formatTime(player.position()), width/2, height/2, -1000);
   
