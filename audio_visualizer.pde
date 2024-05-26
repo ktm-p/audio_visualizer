@@ -86,7 +86,7 @@ void setup() {
   fullScreen(P3D);
   
   minim = new Minim(this);
-  player = minim.loadFile("XU.mp3");
+  player = minim.loadFile("Everglow.mp3");
   meta = player.getMetaData();
   beat = new BeatDetect();
     
@@ -97,18 +97,20 @@ void setup() {
   cols = width/scale;
   terrain = new float[cols + 1][rows];
   
+  // Creates cubes array
   numCubes = (int)(fft.specSize() * specHigh);
   cubes = new Cube[numCubes];
   
+  // Creates pyramids array
   numPyramids = (int)(fft.specSize() * specLow);
   pyramids = new Pyramid[numPyramids];
   
-  //Créer tous les objets
-  //Créer les objets cubes
+  // Populates cubes array
   for (int i = 0; i < numCubes; i++) {
    cubes[i] = new Cube(); 
   }
   
+  // Populates pyramids array
   for (int i = 0; i < numPyramids; i++) {
    pyramids[i] = new Pyramid(); 
   }
@@ -249,7 +251,7 @@ void draw() {
   fill(255, 150 - textTransparency);
   textAlign(CENTER, CENTER);
   textSize(35);
-  text(getName(meta.fileName()), width/2, height/2 - 25, 0);
+  text(getName(meta.fileName()), width/2, height/2 - 35, 0);
   
   // Current track time text
   fill(255, 150 - 32 - textTransparency);
