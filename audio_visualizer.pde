@@ -7,8 +7,6 @@ AudioMetaData meta;
 BeatDetect beat;
 FFT fft;
 
-int currentPosition;
-
 // Percentage of frequencies chosen from fft.specSize()
 float specLow = 0.03;
 float specMid = 0.125;
@@ -27,7 +25,10 @@ float prevScoreHigh;
 // Information for Cubes
 Cube[] cubes;
 int numCubes;
-float theta = 0;
+
+// Information for Pyramids
+Pyramid[] pyramids;
+int numPyramids;
 
 // Information for 3D Terrain Generation
 int cols, rows; // Rows is calculated as fft.specSize() * (specLow + specMid + specHigh); used for other things as well.
@@ -61,6 +62,10 @@ String getName(String fileName) {
   return split(fileName, ".mp3")[0];
 }
 
+float getPosition(int startZ, int endZ) {
+  return map(player.position(), 0, player.length(), startZ, endZ);
+}
+
 // Enables user to play/pause the audio. Uses 'a' key.
 void keyPressed() {
   if (key == 'a') {
@@ -81,7 +86,7 @@ void setup() {
   fullScreen(P3D);
   
   minim = new Minim(this);
-  player = minim.loadFile("Everglow.mp3");
+  player = minim.loadFile("XU.mp3");
   meta = player.getMetaData();
   beat = new BeatDetect();
     
@@ -95,10 +100,17 @@ void setup() {
   numCubes = (int)(fft.specSize() * specHigh);
   cubes = new Cube[numCubes];
   
+  numPyramids = (int)(fft.specSize() * specLow);
+  pyramids = new Pyramid[numPyramids];
+  
   //Créer tous les objets
   //Créer les objets cubes
   for (int i = 0; i < numCubes; i++) {
    cubes[i] = new Cube(); 
+  }
+  
+  for (int i = 0; i < numPyramids; i++) {
+   pyramids[i] = new Pyramid(); 
   }
   
   background(0);
@@ -153,16 +165,7 @@ void draw() {
   
   // Defining colors to be used
   color lineColor = color(100 + scoreLow, 100 + scoreMid, 100 + scoreHigh);
-  //color circleColor = color(100 + scoreLow, 0, 25 + scoreHigh);
   
-  pushMatrix();
-  //translate(width / 2, height / 2);
-  //rotateZ(theta);
-  //translate(-width / 2, -height / 2);
-  
-  theta += (scoreGlobal / 1000) * (PI / 1000);
-
-  // 3D TERRAIN
   // Moving terrain
   terrainMovement += (scoreGlobal / 2500) + 0.01;
   // Populating terrain array with values
@@ -175,6 +178,7 @@ void draw() {
     }
     zOffset += 0.1;
   }
+  
   // Drawing the 3D Terrain using Perlin Noise
   noFill();
   strokeWeight(1);
@@ -188,26 +192,25 @@ void draw() {
     endShape();
   }
   
-  
+  // Drawing cubes
   for(int i = 0; i < numCubes; i++)
   {
     float bandValue = fft.getBand(i);
     cubes[i].display(scoreLow, scoreMid, scoreHigh, bandValue, scoreGlobal);
   }
   
-  // Bar tracking track position
-  //strokeWeight(1 + (scoreGlobal / 300));
-  //stroke(lineColor, 255 - 25);
-  //line(0, (height / 2) - 25, -25, 0, (height / 2) + 25, -25);
-  //line(0, (height / 2) - 25, -25, 0, (height / 2) - 25, -750);
-  //line(0, (height / 2) + 25, -25, 0, (height / 2) + 25, -750);
-  //line(0, (height / 2) - 25, -750, 0, (height / 2) + 25, -750);
+  // Drawing pyramids
+  for(int i = 0; i < numPyramids; i++)
+  {
+    int index = (int) map(i, 0, numPyramids, fft.specSize() * specMid, fft.specSize() * specLow + fft.specSize() * specMid);
+    float bandValue = fft.getBand(index);
+    pyramids[i].display(scoreLow, scoreMid, scoreHigh, bandValue, scoreGlobal);
+  }
   
-  // WAVEFORM LINES
   // Calculating values to be used for waveform lines
   float prevBandValue = fft.getBand(0);
-  float dist = -25;
-  float heightMult = 1.5;
+  float dist = -25; // Spacing between each waveform line
+  float heightMult = 1.5; // Height multiplier
   
   // Drawing waveform lines
   for (int i = 1; i < fft.specSize(); i++) {
@@ -218,33 +221,22 @@ void draw() {
     
     // Bottom left
     line(0, height, dist * (i-1), 0, height, dist * i);
-    
-    //line(0, height - (prevBandValue * heightMult), dist * (i - 1), 0, height - (bandValue * heightMult), dist * i);
-    //line(0, height - (prevBandValue * heightMult), dist * (i - 1), (bandValue * heightMult), height, dist * i);
-    //line((prevBandValue * heightMult), height, dist * (i - 1), (bandValue * heightMult), height, dist * i);
-    
+
     // Bottom right
     line(width, height, dist * (i-1), width, height, dist * i);
-    
-    //line(width, height - (prevBandValue * heightMult), dist * (i - 1), width, height - (bandValue * heightMult), dist * i);
-    //line(width, height - (prevBandValue * heightMult), dist * (i - 1), width - (bandValue * heightMult), height, dist * i);
-    //line(width - (prevBandValue * heightMult), height, dist * (i - 1), width - (bandValue * heightMult), height, dist * i);
-    
+
     // Top Left
     line(0, (prevBandValue * heightMult), dist * (i-1), 0, (bandValue * heightMult), dist * i);
     line((prevBandValue * heightMult), 0, dist * (i-1), (bandValue * heightMult), 0, dist * i);
     line(0, (prevBandValue * heightMult), dist * (i-1), (bandValue * heightMult), 0, dist * i);
-    
-    //line(0, 0, dist * (i - 1), 0, 0, dist * i);
-    
+        
     // Top Right
     line(width, (prevBandValue * heightMult), dist * (i-1), width, (bandValue * heightMult), dist * i);
     line(width - (prevBandValue * heightMult), 0, dist * (i-1), width - (bandValue * heightMult), 0, dist * i);
     line(width, (prevBandValue * heightMult), dist * (i-1), width - (bandValue * heightMult), 0, dist * i);
-    
-    //line(width, 0, dist * (i - 1), width, 0, dist * i);
   }
   
+  // Allows for smooth visibility transition for text when pausing/unpausing
   if (!player.isPlaying()) {
     textTransparency -= 5;
     textTransparency = max(0, textTransparency);
@@ -253,54 +245,67 @@ void draw() {
     textTransparency = min(150, textTransparency);
   }
   
-  // CENTER TEXT
   // Song name text
   fill(255, 150 - textTransparency);
   textAlign(CENTER, CENTER);
   textSize(35);
   text(getName(meta.fileName()), width/2, height/2 - 25, 0);
-  // Current track position text
+  
+  // Current track time text
   fill(255, 150 - 32 - textTransparency);
   text(formatTime(player.position()), width/2, height/2, -1000);
+    
+  // Setting colours for tunnel
+  noFill();
+  strokeWeight(2);
+  stroke(lineColor, 50);
   
-  popMatrix();
+  // Averages the level of the left and right audio streams
+  float multiplier = (player.left.level() + player.right.level()) / 10;
   
-  // CENTER CIRCLE
-  //fill(backgroundColor, 255 - 64);
-  //strokeWeight(2);
-  //stroke(circleColor, 255 - 64);
-  //// Averages the level of the left and right audio streams
-  //float multiplier = (player.left.level() + player.right.level()) / 10;
-  //translate(width/2, height/2, -2000);
-  //// Drawing center circle
-  //for (int s = -1; s <= 1; s += 2) {
-  //  beginShape();
-  //  for (float theta = 0; theta <= 180; theta += 0.5) {
-  //    // Mapping angle to frequency band
-  //    int i = (int) map(theta, 0, 180, 0, rows);
-  //    // Radius for frequency band
-  //    float r = (fft.getBand(i) * 1.25) + ((width / 5) * (1 + multiplier));
-  //    float x = r * sin(radians(theta));
-  //    float y = r * cos(radians(theta));
-  //    // Plotting frequency band vertex
-  //    vertex(s * x, y);
-  //  }
-  //  endShape();
-  //}
+  translate(width/2, height/2, -10000);
+  
+  // Drawing tunnel circle
+  for (int iter = 0; iter < 125; iter++) {
+    pushMatrix();
+    translate(0, 0, 80 * iter);
+    for (int s = -1; s <= 1; s += 2) {
+      beginShape();
+      for (float theta = 61; theta <= 180; theta += 0.5) {
+        // Mapping angle to frequency band
+        int i = (int) map(theta, 0, 180, 0, rows);
+        
+        // Radius for frequency band
+        float r = (fft.getBand(i) * 15) + (width * (1 + multiplier));
+        float x = r * sin(radians(theta));
+        float y = r * cos(radians(theta));
+        
+        // Plotting frequency band vertex
+        vertex(s * x, y);
+      }
+      endShape();
+    }
+    popMatrix();
+  }
 }
 
-class Cube {
+// Shape parent class
+class Shape {
+  // Minimum starting depth
   float startingZ = -10000;
   float maxStartingZ = -2000;
+  // Maximum depth before shape disappears
   float maxZ = 1000;
   
+  // Variables to keep track of shape's position
   float x, y, z;
   float rotX, rotY, rotZ;
   float sumRotX, sumRotY, sumRotZ;
   
+  // Previous bandValue; used for smooth transition when pausing
   float lastValue;
   
-  Cube() {
+  Shape() {
     x = random(0, width);
     y = random(0, height / 2);
     z = random(startingZ, maxStartingZ);
@@ -310,23 +315,27 @@ class Cube {
     rotZ = random(0, 1);
   }
   
+  // Replaced by child's drawSelf() function when used in display()
   void drawSelf(float bandValue) {
-    box(50 + (bandValue / 5));
+    ;
   }
   
   void display(float scoreLow, float scoreMid, float scoreHigh, float bandValue, float scoreGlobal) {
+    // Defining fill and stroke colours
     color fillColor;
     color strokeColor;
     if (player.isPlaying()) {
       fillColor = color(scoreLow, scoreMid, scoreHigh, bandValue * 10);
       strokeColor = color(255, 150 - (20 * bandValue));
       
+      // Stores current bandValue so it can be used when track is paused
       lastValue = bandValue;
     }
     else {
       fillColor = color(scoreLow, scoreMid, scoreHigh, lastValue * 10);
       strokeColor = color(255, max(150 - (20 * lastValue/10), 15));
       
+      // Increasing transparency
       lastValue += 1;
     }
     
@@ -337,6 +346,7 @@ class Cube {
     pushMatrix();
     translate(x, y, z);
     
+    // Rotates the shape
     sumRotX += max(bandValue, 1) * (rotX / 250);
     sumRotY += max(bandValue, 1) * (rotY / 250);
     sumRotZ += max(bandValue, 1) * (rotZ / 250);
@@ -345,11 +355,14 @@ class Cube {
     rotateY(sumRotY);
     rotateZ(sumRotZ);
     
+    // Draws the actual shape
     drawSelf(bandValue);
     popMatrix();
     
-    z += 5 + bandValue + pow(scoreGlobal/200, 2);
+    // Moves shape forward with each timestep
+    z += 5 + bandValue + pow(scoreGlobal/100, 2);
     
+    // If shape reaches maximum depth, it gets reinitialised
     if (z >= maxZ) {
       x = random(0, width);
       y = random(0, height / 2);
@@ -358,6 +371,50 @@ class Cube {
   }
 }
 
-class Pyramids {
-  ;
+class Cube extends Shape {
+  Cube() {
+    super();
+  }
+  
+  void drawSelf(float bandValue) {
+    box(50 + (bandValue / 5));
+  }
+  
+  void display(float scoreLow, float scoreMid, float scoreHigh, float bandValue, float scoreGlobal) {
+    super.display(scoreLow, scoreMid, scoreHigh, bandValue, scoreGlobal);
+  }
+}
+
+class Pyramid extends Shape {
+  float d;
+  float h;
+  int sides = 3;
+  PVector[] basePts = new PVector[sides];
+  
+  Pyramid() {
+    super();
+    
+    this.d = 200;
+    this.h = 100;
+    for (int i = 0; i < sides; ++i ) {
+      float theta = TWO_PI * i / sides;
+      basePts[i] = new PVector(cos(theta) * d/2, sin(theta) * d/2, -h/2);
+    }
+  }
+  
+  void drawSelf(float bandValue) {
+    float bVConstant = 0;
+    beginShape(TRIANGLES);
+    for (int i = 0; i < sides; ++i ) {
+      int i2 = (i+1) % sides;
+      vertex(basePts[i].x + bVConstant, basePts[i].y + bVConstant, basePts[i].z + bVConstant);
+      vertex(basePts[i2].x + bVConstant, basePts[i2].y + bVConstant, basePts[i2].z + bVConstant);
+      vertex(0, 0, h/2);
+    }
+    endShape();
+  }
+  
+  void display(float scoreLow, float scoreMid, float scoreHigh, float bandValue, float scoreGlobal) {
+    super.display(scoreLow, scoreMid, scoreHigh, bandValue, scoreGlobal);
+  }
 }
