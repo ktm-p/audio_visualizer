@@ -69,7 +69,7 @@ void setup() {
   fullScreen(P3D);
   
   minim = new Minim(this);
-  player = minim.loadFile("Everglow.mp3");
+  player = minim.loadFile("xu.mp3");
   meta = player.getMetaData();
   beat = new BeatDetect();
   
@@ -79,7 +79,7 @@ void setup() {
 
   scl = findDivisor(width, 30);
   
-  rows = fft.specSize();
+  rows = int(fft.specSize() * (specLow + specMid + specHigh));
   cols = width/scl;
   
   terrain = new float[cols + 1][rows];
@@ -136,6 +136,7 @@ void draw() {
   float heightMult = 1.5;
   
   color lineColor = color(100 + scoreLow, 100 + scoreMid, 100 + scoreHigh);
+  color circleColor = color(100 + scoreLow, 0, 25 + scoreHigh);
   
   // Moving 3D Terrain at the bottom
   terrainMovement += (scoreGlobal / 2500);
@@ -212,9 +213,28 @@ void draw() {
   fill(255, 150 - 32);
   text(formatTime(player.position()), width/2, height/2, -1000);
   
-  fill(backgroundColor);
-  float multiplier = 1 + ((player.left.level() + player.right.level()) / 2);
-  stroke(lineColor, 255 - 32);
-  translate(0, 0, -1001);
-  ellipse(width/2, height/2 - 25, multiplier * (width/5), multiplier * (width/5));
+  fill(backgroundColor, 255 - 64);
+  //noFill();
+  strokeWeight(2);
+  stroke(circleColor, 255 - 64);
+  float multiplier = (player.left.level() + player.right.level()) / 10;
+  translate(width/2, height/2, -2000);
+  beginShape();
+  for (int theta = 0; theta <= 180; theta++) {
+    int i = (int) map(theta, 0, 180, 0, rows);
+    float r = (fft.getBand(i) * 1.25) + ((width / 5) * (1 + multiplier));
+    float x = r * sin(radians(theta));
+    float y = r * cos(radians(theta));
+    vertex(x, y);
+  }
+  endShape();
+  beginShape();
+  for (int theta = 0; theta <= 180; theta++) {
+    int i = (int) map(theta, 0, 180, 0, rows);
+    float r = (fft.getBand(i) * 1.25) + ((width / 5) * (1 + multiplier));
+    float x = r * sin(radians(theta));
+    float y = r * cos(radians(theta));
+    vertex(-x, y);
+  }
+  endShape();
 }
