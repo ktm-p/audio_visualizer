@@ -15,6 +15,13 @@ In order to use the audio visualizer, proceed as follows:
 4. Install and add the `Minim` library by doing: `Sketch > Import Library > Manage Libraries`, then search for `Minim` and install it.
 5. Run the program. Press `a` to play/pause the audio.
 
+## Demo
+
+Below is a demo of the audio visualizer using the song Everglow by Patrick Patrikios:
+
+[![Watch the video](https://github.com/ktm-p/audio_visualizer/assets/119767232/64108ede-0c73-41f4-a288-565cbcf0a89e
+)](https://youtu.be/7KIApzMEXdQ)
+
 ## Images
 
 Below are some images of the audio visualizer:
